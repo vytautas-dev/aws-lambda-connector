@@ -15,6 +15,7 @@
   "dependencies": {
     "aws-sdk": "^2.1428.0",
     "esbuild": "^0.14.14",
+    "uuid": "^9.0.0",
     "uuidv4": "^6.2.13"
   },
   "devDependencies": {

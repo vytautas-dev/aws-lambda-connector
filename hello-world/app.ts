@@ -1,5 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import AWS from 'aws-sdk';
+import AWS, { S3, Lambda } from 'aws-sdk';
+import { v4 as uuid } from 'uuid';
+import {TDataToFill, TGeneratedObject} from './types';
+
+const bucketName = '00vytautas';
 
 //? Postman
 // {
@@ -19,66 +23,45 @@ import AWS from 'aws-sdk';
 //     "outputPdfName": "output1.pdf"
 // }
 
-type TInput = {
-    name: string;
-    token: string;
-    bucketName: string;
-    inputDocxName: string;
-};
-
-type TInputObj = {
-    args: TInput[];
-    bucketName: string;
-    outputPdfName: string;
-};
-
 export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
 
-        const { args, bucketName, outputPdfName}: TInputObj = JSON.parse(event.body || '{}');
-        const convertedFiles: string[] = [];
+        const { template, organizationId, namespace, callbackEndpoint }: TGeneratedObject = JSON.parse(event.body || '{}');
+        const { templateBody, documents } = template;
+        const convertedFiles = [];
 
         // Filler
         // sam local start-lambda --host 0.0.0.0.
+        // sam local start-lambda --host 0.0.0.0 --warm-containers LAZY
 
-        const lambdaFiller = new AWS.Lambda({
-            apiVersion: '2015-03-31',
-            endpoint: 'http://192.168.100.45:3001',
-            sslEnabled: false
-        })
-
-        const dataToSendToFiller = args;
-
-        for (const el of dataToSendToFiller) {
-            try {
-                const data = await lambdaFiller
-                    .invoke({
-                        FunctionName: 'Filler',
-                        InvocationType: 'RequestResponse',
-                        Payload: JSON.stringify({ ...el, bucketName }),
-                    })
-                    .promise();
-
-                const payloadString = data.Payload ? data.Payload.toString() : '';
-                const response = JSON.parse(payloadString);
-                const convertedFile = JSON.parse(response.body).fileName;
-
-                convertedFiles.push(convertedFile);
-            } catch (err) {
-                console.log('Error sending data:', err);
+        for (const document of documents) {
+            const fileID = uuid();
+            const lambdaInvokeParams = {
+                FunctionName: 'Filler',
+                InvocationType: 'RequestResponse',
+                Payload: JSON.stringify({ document, fileID, templateBody, bucketName})
             }
+            const lambdaFiller = new Lambda({
+                endpoint: 'http://192.168.100.45:3001'
+            })
+
+            const result = await lambdaFiller.invoke(lambdaInvokeParams).promise();
+            const payloadString = result.Payload ? result.Payload.toString() : '';
+            const response = JSON.parse(payloadString);
+            const convertedFile = JSON.parse(response.body).fileName
+            convertedFiles.push(convertedFile);
         }
 
-        //! Merger
-        //? sam local start-lambda --host 0.0.0.0 --port 3002
+        // Merger
+        // sam local start-lambda --host 0.0.0.0 --port 3002
+
         const lambdaMerger = new AWS.Lambda({
-            apiVersion: '2015-03-31',
             endpoint: 'http://192.168.100.45:3002',
-            sslEnabled: false,
         });
 
+        const pdfID = uuid();
         const dataToSendToMerger = {
-            args: [`--files=${[...convertedFiles]}`, `--bucket=${bucketName}`, `--filename=${outputPdfName}`],
+            args: [`--files=${[...convertedFiles]}`, `--bucket=${bucketName}`, `--filename=${pdfID}.pdf`],
         };
 
         await lambdaMerger
@@ -98,7 +81,7 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
                 function: 'LambdaConnectorFunction',
                 message: 'Files converted successfully',
                 convertedFiles,
-                // dataToMerge: dataToSendToMerger,
+                dataToMerge: dataToSendToMerger,
             }),
             headers: { 'content-type': 'application/json' },
         };

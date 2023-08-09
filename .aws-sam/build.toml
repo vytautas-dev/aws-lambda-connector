@@ -5,7 +5,7 @@ codeuri = "/home/wojciechszczygielski/Documents/britenet/aws-serverless/aws-lamb
 runtime = "nodejs18.x"
 architecture = "x86_64"
 handler = "app.lambdaHandler"
-manifest_hash = "eb1602401b49823d2742749a190d9978"
+manifest_hash = "4d248f556a046b80aea3b6757c63d0ac"
 packagetype = "Zip"
 functions = ["LambdaConnectorFunction"]
 
@@ -17,6 +17,11 @@ Minify = true
 Target = "es2020"
 Sourcemap = true
 EntryPoints = ["app.ts"]
+
+
+
+
+
 
 
 

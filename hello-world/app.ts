@@ -1,27 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import AWS, { S3, Lambda } from 'aws-sdk';
+import AWS, { Lambda } from 'aws-sdk';
 import { v4 as uuid } from 'uuid';
-import {TDataToFill, TGeneratedObject} from './types';
+import { TGeneratedObject } from './types';
 
 const bucketName = '00vytautas';
-
-//? Postman
-// {
-//     "args": [
-//         {
-//             "name": "name1",
-//             "token": "token1",
-//             "inputDocxName": "input1.docx"
-//         },
-//         {
-//             "name": "name2",
-//             "token": "token2",
-//             "inputDocxName": "input2.docx"
-//         }
-//     ],
-//     "bucketName": "00bucket",
-//     "outputPdfName": "output1.pdf"
-// }
 
 export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {

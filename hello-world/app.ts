@@ -10,13 +10,12 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
 
         const { template, organizationId, namespace, callbackEndpoint }: TGeneratedObject = JSON.parse(event.body || '{}');
         const { templateBody, documents } = template;
-        const convertedFiles = [];
 
         // Filler
         // sam local start-lambda --host 0.0.0.0.
         // sam local start-lambda --host 0.0.0.0 --warm-containers LAZY
 
-        for (const document of documents) {
+        const convertedFiles = await Promise.all(documents.map(async (document) => {
             const fileID = uuid();
             const lambdaInvokeParams = {
                 FunctionName: 'Filler',
@@ -30,9 +29,9 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
             const result = await lambdaFiller.invoke(lambdaInvokeParams).promise();
             const payloadString = result.Payload ? result.Payload.toString() : '';
             const response = JSON.parse(payloadString);
-            const convertedFile = JSON.parse(response.body).fileName
-            convertedFiles.push(convertedFile);
-        }
+            console.log('response', JSON.stringify(response));
+            return JSON.parse(response.body).fileName
+        }))
 
         // Merger
         // sam local start-lambda --host 0.0.0.0 --port 3002
